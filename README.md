@@ -9,6 +9,7 @@ This repository collects verifiable links to real open-source activity made by m
 - [Purpose](#purpose)
 - [What Counts as a Contribution](#what-counts-as-a-contribution)
 - [How to Add Your Contribution](#how-to-add-your-contribution)
+- [How Your PR Is Checked](#how-your-pr-is-checked)
 - [Rules](#rules)
 
 ## Purpose
@@ -59,10 +60,29 @@ If this is your 1st time using **GitHub CLI**, run:
 gh auth login
 ```
 
+## How Your PR Is Checked
+
+When you open a pull request, GitHub automatically runs the `Validate student PR` check.
+
+The check must pass before your pull request can be merged. If something is wrong, GitHub will show a failed check with a specific error message and a `How to fix:` instruction.
+
+The validator checks that:
+
+- You changed exactly one file.
+- The file is named `data/students/<your-github-username>.txt`.
+- The filename matches your GitHub username.
+- The file contains at least one contribution link.
+- Each line is a GitHub pull request or issue link.
+- Each linked pull request or issue was opened by your GitHub account.
+- There are no duplicate links.
+- You did not edit generated files such as `students.md`.
+
+After your pull request is merged, `students.md` is rebuilt automatically. It shows your contribution, project, type, current status, and topic.
+
 ## Rules
 
 - Add only your own contributions. Don't work with files of others.
 - Add only PR/issuse links to existing big open-source projects.
 - Add one contribution link per line.
-- Do not edit `students.md` manually. It is generated automatically.
-
+- Do not edit `students.md` manually. It is generated automatically after your PR is merged.
+- If the validation check fails, read the `How to fix:` message and update your PR.
