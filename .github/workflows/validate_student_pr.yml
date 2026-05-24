@@ -1,4 +1,4 @@
-name: Validate contribution log
+name: Validate student PR
 
 on:
   pull_request_target:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate student contribution file
+    name: Validate student PR
     runs-on: ubuntu-latest
 
     steps:
@@ -27,4 +27,4 @@ jobs:
       - name: Validate PR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 update_log.py
+        run: python3 scripts/validate_student_pr.py

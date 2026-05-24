@@ -5,7 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-import update_log
+import validate_student_pr
 
 
 def make_event(
@@ -53,20 +53,20 @@ def run_validator(
     if file_content is None:
         file_content = "https://github.com/python/cpython/pull/123\n"
 
-    monkeypatch.setattr(update_log, "read_event", lambda: event)
-    monkeypatch.setattr(update_log, "gh_get_paginated", lambda url: changed_files)
+    monkeypatch.setattr(validate_student_pr, "read_event", lambda: event)
+    monkeypatch.setattr(validate_student_pr, "gh_get_paginated", lambda url: changed_files)
     monkeypatch.setattr(
-        update_log,
+        validate_student_pr,
         "get_pr_file_content",
         lambda head_repo, head_sha, filename: file_content,
     )
     monkeypatch.setattr(
-        update_log,
+        validate_student_pr,
         "get_link_author",
         lambda owner, repo, kind, number: linked_author,
     )
 
-    return update_log.main()
+    return validate_student_pr.main()
 
 
 def test_valid_pr_passes(monkeypatch, capsys):
@@ -97,6 +97,30 @@ def test_filename_must_match_pr_author(monkeypatch):
         )
 
     assert exc.value.code == 1
+
+
+def test_failure_message_includes_specific_fix(monkeypatch, capsys):
+    event = make_event(pr_author="alice")
+    changed_files = [
+        {
+            "filename": "data/students/bob.txt",
+            "status": "added",
+        }
+    ]
+
+    with pytest.raises(SystemExit):
+        run_validator(
+            monkeypatch,
+            event=event,
+            changed_files=changed_files,
+            linked_author="alice",
+        )
+
+    err = capsys.readouterr().err
+
+    assert "::error title=Student PR validation failed::" in err
+    assert "Filename username does not match current PR author." in err
+    assert "How to fix: Rename the file to data/students/alice.txt" in err
 
 
 def test_link_author_must_match_pr_author(monkeypatch):
