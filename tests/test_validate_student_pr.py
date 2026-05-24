@@ -183,6 +183,23 @@ def test_forbidden_file_change_fails(monkeypatch):
     assert exc.value.code == 1
 
 
+def test_generated_contribution_log_change_fails(monkeypatch):
+    changed_files = [
+        {
+            "filename": "students_contribute_log.md",
+            "status": "modified",
+        }
+    ]
+
+    with pytest.raises(SystemExit) as exc:
+        run_validator(
+            monkeypatch,
+            changed_files=changed_files,
+        )
+
+    assert exc.value.code == 1
+
+
 def test_more_than_one_student_file_fails(monkeypatch):
     changed_files = [
         {
@@ -199,6 +216,73 @@ def test_more_than_one_student_file_fails(monkeypatch):
         run_validator(
             monkeypatch,
             changed_files=changed_files,
+        )
+
+    assert exc.value.code == 1
+
+
+def test_conference_talks_file_passes(monkeypatch, capsys):
+    content = "\n".join(
+        [
+            "# Student Conference Talks",
+            "",
+            "| Date | Name | Conference | Location | Format | Topic |",
+            "| --- | --- | --- | --- | --- | --- |",
+            "| 2026.05 | [Gleb Popov](https://github.com/gleb-pp/) | [PythonDays](https://example.com/python-days) | online | talk | [Generators in CPython](https://github.com/gleb-pp/pygen-research) |",
+            "",
+        ]
+    )
+
+    run_validator(
+        monkeypatch,
+        changed_files=[
+            {
+                "filename": "students_conference_talks.md",
+                "status": "modified",
+            }
+        ],
+        file_content=content,
+    )
+
+    out = capsys.readouterr().out
+
+    assert "Validated conference talk table" in out
+    assert "All checks passed" in out
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        "| 2026-05 | [Gleb Popov](https://github.com/gleb-pp/) | [PythonDays](https://example.com) | online | talk | [Topic](https://example.com/topic) |",
+        "| 2026.05 | Gleb Popov | [PythonDays](https://example.com) | online | talk | [Topic](https://example.com/topic) |",
+        "| 2026.05 | [Gleb Popov](https://example.com/gleb) | [PythonDays](https://example.com) | online | talk | [Topic](https://example.com/topic) |",
+        "| 2026.05 | [Gleb Popov](https://github.com/gleb-pp/) | [PythonDays](https://example.com) | somewhere | talk | [Topic](https://example.com/topic) |",
+        "| 2026.05 | [Gleb Popov](https://github.com/gleb-pp/) | [PythonDays](https://example.com) | online | lecture | [Topic](https://example.com/topic) |",
+        "| 2026.05 | [Gleb Popov](https://github.com/gleb-pp/) | [PythonDays](https://example.com) | online | talk | Тема |",
+    ],
+)
+def test_invalid_conference_talk_row_fails(monkeypatch, row):
+    content = "\n".join(
+        [
+            "# Student Conference Talks",
+            "",
+            "| Date | Name | Conference | Location | Format | Topic |",
+            "| --- | --- | --- | --- | --- | --- |",
+            row,
+            "",
+        ]
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        run_validator(
+            monkeypatch,
+            changed_files=[
+                {
+                    "filename": "students_conference_talks.md",
+                    "status": "modified",
+                }
+            ],
+            file_content=content,
         )
 
     assert exc.value.code == 1

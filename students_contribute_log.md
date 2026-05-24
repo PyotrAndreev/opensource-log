@@ -1,4 +1,4 @@
-# Student Contributions
+# Student Contribution Log
 
 This file is generated from `data/students/*.txt`. Do not edit it manually.
 

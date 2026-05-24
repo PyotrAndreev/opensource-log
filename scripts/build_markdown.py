@@ -13,7 +13,7 @@ from typing import Any, Callable
 
 
 STUDENT_DIR = Path("data/students")
-STUDENTS_OUTPUT = Path("students.md")
+STUDENTS_OUTPUT = Path("students_contribute_log.md")
 GITHUB_LINK_RE = re.compile(
     r"^https://github\.com/"
     r"(?P<owner>[A-Za-z0-9_.-]+)/"
@@ -203,7 +203,7 @@ def markdown_link(text: str, url: str) -> str:
 
 def render_students_md(rows: list[ContributionRow]) -> str:
     lines = [
-        "# Student Contributions",
+        "# Student Contribution Log",
         "",
         "This file is generated from `data/students/*.txt`. Do not edit it manually.",
         "",

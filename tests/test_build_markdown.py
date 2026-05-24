@@ -47,7 +47,7 @@ def test_render_students_md():
 
     assert rendered == "\n".join(
         [
-            "# Student Contributions",
+            "# Student Contribution Log",
             "",
             "This file is generated from `data/students/*.txt`. Do not edit it manually.",
             "",
@@ -63,7 +63,7 @@ def test_render_students_md():
 def test_render_empty_students_md():
     assert build_markdown.render_students_md([]) == "\n".join(
         [
-            "# Student Contributions",
+            "# Student Contribution Log",
             "",
             "This file is generated from `data/students/*.txt`. Do not edit it manually.",
             "",

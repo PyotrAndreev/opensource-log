@@ -15,6 +15,19 @@ from typing import Any
 STUDENT_FILE_RE = re.compile(
     r"^data/students/(?P<username>[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?)\.txt$"
 )
+CONFERENCE_TALKS_FILE = "students_conference_talks.md"
+GENERATED_CONTRIBUTION_LOG_FILE = "students_contribute_log.md"
+CONFERENCE_TALK_FORMATS = {"talk", "poster", "workshop", "keynote", "lighttalk"}
+CONFERENCE_TABLE_HEADER = "| Date | Name | Conference | Location | Format | Topic |"
+CONFERENCE_TABLE_SEPARATOR = "| --- | --- | --- | --- | --- | --- |"
+
+DATE_RE = re.compile(r"^[0-9]{4}\.(0[1-9]|1[0-2])$")
+GITHUB_PROFILE_RE = re.compile(
+    r"^https://github\.com/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?/?$"
+)
+LOCATION_RE = re.compile(r"^[A-Za-z][A-Za-z .'-]*, [A-Za-z][A-Za-z .'-]*$")
+MARKDOWN_LINK_RE = re.compile(r"^\[(?P<text>[^\]\n]+)\]\((?P<url>https?://[^\s)]+)\)$")
+PERSON_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z.'-]*(?: [A-Za-z][A-Za-z.'-]*)+$")
 
 GITHUB_LINK_RE = re.compile(
     r"^https://github\.com/"
@@ -36,6 +49,141 @@ def fail(message: str, fix: str | None = None) -> None:
 
 def ok(message: str) -> None:
     print(f"OK: {message}")
+
+
+def split_markdown_table_row(line: str) -> list[str]:
+    stripped = line.strip()
+
+    if not stripped.startswith("|") or not stripped.endswith("|"):
+        fail(
+            f"Invalid markdown table row:\n{line}",
+            "Use one table row that starts and ends with `|`.",
+        )
+
+    return [cell.strip() for cell in stripped.strip("|").split("|")]
+
+
+def require_ascii_text(value: str, label: str) -> None:
+    if any(ord(ch) < 32 or ord(ch) > 126 for ch in value):
+        fail(
+            f"{label} must be written in English ASCII text:\n{value}",
+            "Rewrite the value using English letters, digits, punctuation, and links only.",
+        )
+
+
+def parse_markdown_link(value: str, label: str) -> tuple[str, str]:
+    match = MARKDOWN_LINK_RE.fullmatch(value)
+
+    if match is None:
+        fail(
+            f"{label} must be a markdown link:\n{value}",
+            "Use this format: [Visible text](https://example.com/path)",
+        )
+
+    text = match.group("text")
+    url = match.group("url")
+    require_ascii_text(text, label)
+    require_ascii_text(url, f"{label} URL")
+    return text, url
+
+
+def validate_conference_talk_row(row: str, row_number: int) -> None:
+    cells = split_markdown_table_row(row)
+
+    if len(cells) != 6:
+        fail(
+            f"Conference talk row {row_number} must have 6 columns, got {len(cells)}:\n{row}",
+            "Use exactly: Date, Name, Conference, Location, Format, Topic.",
+        )
+
+    date, name, conference, location, talk_format, topic = cells
+
+    for label, value in [
+        ("Date", date),
+        ("Name", name),
+        ("Conference", conference),
+        ("Location", location),
+        ("Format", talk_format),
+        ("Topic", topic),
+    ]:
+        require_ascii_text(value, label)
+
+    if DATE_RE.fullmatch(date) is None:
+        fail(
+            f"Invalid Date in conference talk row {row_number}: {date}",
+            "Use `YYYY.MM`, for example `2026.05`.",
+        )
+
+    name_text, name_url = parse_markdown_link(name, "Name")
+
+    if PERSON_NAME_RE.fullmatch(name_text) is None:
+        fail(
+            f"Invalid Name in conference talk row {row_number}: {name_text}",
+            "Use the student's name and surname, for example `[Gleb Popov](https://github.com/gleb-pp/)`.",
+        )
+
+    if GITHUB_PROFILE_RE.fullmatch(name_url) is None:
+        fail(
+            f"Invalid GitHub profile link in conference talk row {row_number}: {name_url}",
+            "Link the student's name to their GitHub profile.",
+        )
+
+    parse_markdown_link(conference, "Conference")
+
+    if location != "online" and LOCATION_RE.fullmatch(location) is None:
+        fail(
+            f"Invalid Location in conference talk row {row_number}: {location}",
+            "Use `online` or `<country>, <city>`, for example `Russia, Moscow`.",
+        )
+
+    if talk_format not in CONFERENCE_TALK_FORMATS:
+        allowed = " / ".join(sorted(CONFERENCE_TALK_FORMATS))
+        fail(
+            f"Invalid Format in conference talk row {row_number}: {talk_format}",
+            f"Use one of: {allowed}.",
+        )
+
+    parse_markdown_link(topic, "Topic")
+
+
+def validate_conference_talks_content(content: str) -> None:
+    lines = content.splitlines()
+
+    try:
+        header_index = lines.index(CONFERENCE_TABLE_HEADER)
+    except ValueError:
+        fail(
+            f"{CONFERENCE_TALKS_FILE} must contain the conference talk table header.",
+            f"Use exactly: {CONFERENCE_TABLE_HEADER}",
+        )
+
+    separator_index = header_index + 1
+
+    if separator_index >= len(lines) or lines[separator_index] != CONFERENCE_TABLE_SEPARATOR:
+        fail(
+            f"{CONFERENCE_TALKS_FILE} has an invalid markdown table separator.",
+            f"Use exactly: {CONFERENCE_TABLE_SEPARATOR}",
+        )
+
+    rows = [line for line in lines[separator_index + 1 :] if line.strip()]
+
+    if not rows:
+        fail(
+            f"{CONFERENCE_TALKS_FILE} must contain at least one conference talk row.",
+            "Add one row below the table header.",
+        )
+
+    seen: set[str] = set()
+
+    for offset, row in enumerate(rows, start=separator_index + 2):
+        if row in seen:
+            fail(
+                f"Duplicate conference talk row in {CONFERENCE_TALKS_FILE}:\n{row}",
+                "Remove the duplicate row.",
+            )
+
+        seen.add(row)
+        validate_conference_talk_row(row, offset)
 
 
 def read_event() -> dict[str, Any]:
@@ -197,6 +345,7 @@ def main() -> None:
         )
 
     student_files: list[dict[str, Any]] = []
+    conference_talk_files: list[dict[str, Any]] = []
     forbidden: list[str] = []
 
     for f in changed_files:
@@ -211,25 +360,39 @@ def main() -> None:
 
         if STUDENT_FILE_RE.fullmatch(filename) and status in {"added", "modified"}:
             student_files.append(f)
+        elif filename == CONFERENCE_TALKS_FILE and status in {"added", "modified"}:
+            conference_talk_files.append(f)
         else:
             forbidden.append(f"{filename} ({status})")
 
     if forbidden:
         fail(
-            "This PR may only add/modify one file under "
-            "data/students/<github-username>.txt.\n"
+            "This PR may only add/modify one student contribution file or the "
+            "conference talks table.\n"
             + "\n".join(f"Forbidden: {x}" for x in forbidden),
-            "Remove changes to all other files. Keep only your own student file.",
+            "Keep either data/students/<your-github-username>.txt or "
+            f"{CONFERENCE_TALKS_FILE}. Do not edit generated files such as "
+            f"{GENERATED_CONTRIBUTION_LOG_FILE}.",
         )
 
-    if len(student_files) != 1:
+    if len(student_files) == 1 and not conference_talk_files:
+        filename = student_files[0]["filename"]
+
+    elif len(conference_talk_files) == 1 and not student_files:
+        filename = conference_talk_files[0]["filename"]
+        content = get_pr_file_content(head_repo, head_sha, filename)
+        validate_conference_talks_content(content)
+        ok(f"Validated conference talk table: {filename}")
+        ok("All checks passed.")
+        return
+
+    else:
         fail(
-            "This PR must add/modify exactly one student file: "
-            "data/students/<github-username>.txt",
-            "Create one file named data/students/<your-github-username>.txt and put your links there.",
+            "This PR must use exactly one accepted student update format.",
+            "Either update data/students/<your-github-username>.txt with GitHub PR/issue links, "
+            f"or update {CONFERENCE_TALKS_FILE} with conference talk rows.",
         )
 
-    filename = student_files[0]["filename"]
     m = STUDENT_FILE_RE.fullmatch(filename)
 
     if m is None:
