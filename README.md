@@ -1,6 +1,6 @@
 # Open Source Log
 
-A public record of my students’ contributions to existing open-source projects.
+[students.md](https://github.com/PyotrAndreev/opensource-log/blob/main/students.md) -- a public record of my students’ contributions to existing open-source projects.
 
 This repository collects verifiable links to real open-source activity made by my students: pull requests (PR), issues.  
 
